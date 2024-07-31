@@ -20,7 +20,7 @@ export type Node = ItemDescriptor & {
 }
 
 export type Slot = {
-    parentId: NodeId;
+    parentId: NodeId | null;
     position: number;
 }
 
@@ -101,13 +101,27 @@ export function UniversalTree(props: {nodeList: Node[]}) {
             dragNode(n);
         }
     }
+    const handleDrop = (s: Slot, n: Node) => {
+        context.updateNode({id: n.id, parentId: s.parentId}, s.position);
+        dragNode(null);
+    };
     return (
         <div className="universal-tree">
             <DragContext.Provider value={dragContext}>
                 <NodeTreeContext.Provider value={context}>
-                    {rootNodes.map(node => (
-                        <BoundTreeNode key={node.id} id={node.id} showSlots={true}/>
+                    {rootNodes.map((node, index) => (
+                        <Fragment key={node.id}>
+                            <TreeSlot
+                                slot={{parentId: null, position: index}}
+                                onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                            />
+                            <BoundTreeNode id={node.id} showSlots={true}/>
+                        </Fragment>
                     ))}
+                    <TreeSlot
+                        slot={{parentId: null, position: rootNodes.length}}
+                        onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                    />
                 </NodeTreeContext.Provider>
             </DragContext.Provider>
         </div>
