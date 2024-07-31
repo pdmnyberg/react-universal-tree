@@ -25,12 +25,14 @@ export type Slot = {
 }
 
 type NodeTreeManager = {
+    nodeList: Node[];
     getNode(id: NodeId): Node;
     getChildren(parentId: NodeId): Node[];
     updateNode(node: Partial<Node> & Pick<Node, "id">, position?: number): void;
 }
 
 export const NodeTreeContext = React.createContext<NodeTreeManager>({
+    nodeList: [],
     getNode(id: NodeId): Node {
         return {
             id: id,
@@ -44,12 +46,18 @@ export const NodeTreeContext = React.createContext<NodeTreeManager>({
     updateNode(_: Partial<Node> & Pick<Node, "id">) {}
 })
 
-export const DragContext = React.createContext<{
+type DragManager = {
     dragNode: (node: Node | null) => void;
+    dropNode: (slot: Slot | null) => void;
     currentNode: Node | null;
-}>({
+}
+
+export const DragContext = React.createContext<DragManager>({
     dragNode(n) {
        console.log(n);
+    },
+    dropNode(s) {
+        console.log(s);
     },
     currentNode: null
 })
@@ -76,11 +84,10 @@ function moveNode(nodeList: Node[], node: Node, position: number) {
     nodeList.splice(insertIndex, 0, node);
 }
 
-export function UniversalTree(props: {nodeList: Node[]}) {
-    const [nodeList, setNodes] = React.useState(props.nodeList);
-    const [currentNode, dragNode] = React.useState<Node | null>(null);
-    const rootNodes = nodeList.filter(n => n.parentId === null);
-    const context: NodeTreeManager = {
+function useNodeListManager(initialNodeList: Node[]): NodeTreeManager & {setNodeList(l: Node[]): void} {
+    const [nodeList, setNodeList] = React.useState(initialNodeList);
+    return {
+        nodeList: nodeList,
         getNode(id: NodeId) {return nodeList.filter(n => n.id === id)[0]},
         getChildren(parentId: NodeId) {return nodeList.filter(n => n.parentId === parentId)},
         updateNode(node: Partial<Node> & Pick<Node, "id">, position?: number) {
@@ -92,35 +99,51 @@ export function UniversalTree(props: {nodeList: Node[]}) {
             } else {
                 updatedNodeList[nodeIndex] = updatedNode;
             }
-            setNodes(updatedNodeList);
+            setNodeList(updatedNodeList);
         },
-    }
-    const dragContext = {
+        setNodeList(nodeList: Node[]) {
+            setNodeList(nodeList)
+        }
+    };
+}
+
+function useDragManager(nodeManager: NodeTreeManager) {
+    const [currentNode, dragNode] = React.useState<Node | null>(null);
+    return {
         currentNode,
-        dragNode: (n: Node | null) => {
+        dragNode(n: Node | null) {
             dragNode(n);
+        },
+        dropNode(s: Slot | null) {
+            if (s && currentNode) {
+                nodeManager.updateNode({id: currentNode.id, parentId: s.parentId}, s.position);
+            }
+            dragNode(null);
         }
     }
-    const handleDrop = (s: Slot, n: Node) => {
-        context.updateNode({id: n.id, parentId: s.parentId}, s.position);
-        dragNode(null);
-    };
+}
+
+export function UniversalTree(props: {nodeList: Node[]}) {
+    const nodeManager = useNodeListManager(props.nodeList);
+    const dragManager = useDragManager(nodeManager);
+    const rootNodes = nodeManager.nodeList.filter(n => n.parentId === null);
+
     return (
         <div className="universal-tree">
-            <DragContext.Provider value={dragContext}>
-                <NodeTreeContext.Provider value={context}>
+            <DragContext.Provider value={dragManager}>
+                <NodeTreeContext.Provider value={nodeManager}>
                     {rootNodes.map((node, index) => (
                         <Fragment key={node.id}>
                             <TreeSlot
                                 slot={{parentId: null, position: index}}
-                                onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                                onDrop={dragManager.dropNode}
                             />
                             <BoundTreeNode id={node.id} showSlots={true}/>
                         </Fragment>
                     ))}
                     <TreeSlot
                         slot={{parentId: null, position: rootNodes.length}}
-                        onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                        onDrop={dragManager.dropNode}
                     />
                 </NodeTreeContext.Provider>
             </DragContext.Provider>
@@ -130,16 +153,12 @@ export function UniversalTree(props: {nodeList: Node[]}) {
 
 export function BoundTreeNode({id, showSlots}: {id: NodeId, showSlots: boolean}) {
     const context = React.useContext(NodeTreeContext);
-    const {dragNode, currentNode} = React.useContext(DragContext);
+    const {dragNode, dropNode, currentNode} = React.useContext(DragContext);
     const node = context.getNode(id);
     const nodeList = context.getChildren(id);
     const toggleNodeOpen = (id: NodeId, isOpen: boolean) => {
         context.updateNode({id, isOpen});
     }
-    const handleDrop = (s: Slot, n: Node) => {
-        context.updateNode({id: n.id, parentId: s.parentId}, s.position);
-        dragNode(null);
-    };
     const isCurrentNode = currentNode && currentNode.id === node.id;
     showSlots = showSlots && !!currentNode && !isCurrentNode;
     return (
@@ -150,7 +169,7 @@ export function BoundTreeNode({id, showSlots}: {id: NodeId, showSlots: boolean})
             insertSlot={
                 showSlots ? <TreeSlot
                     slot={{position: nodeList.length, parentId: node.id}}
-                    onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                    onDrop={dropNode}
                 /> : undefined
             }
         >
@@ -160,7 +179,7 @@ export function BoundTreeNode({id, showSlots}: {id: NodeId, showSlots: boolean})
                         {showSlots
                             ? <TreeSlot
                                 slot={{parentId: node.id, position: index}}
-                                onDrop={(s) => currentNode && handleDrop(s, currentNode)}
+                                onDrop={dropNode}
                             />
                             : <></>}
                         <BoundTreeNode id={n.id} showSlots={showSlots}/>
