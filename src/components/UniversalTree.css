@@ -1,0 +1,98 @@
+* {
+    box-sizing: border-box;
+}
+
+.universal-tree {
+    --node-indent: 5px;
+    --node-background-color: #fff;
+    --slot-size: 20px;
+    --slot-accent-color: rgba(0, 0, 0, 0.0);
+    --slot-background-color: rgba(0, 0, 0, 0.0);
+}
+
+.universal-tree .tree-node {
+    --node-accent-color: #666;
+}
+
+.universal-tree .tree-node > .node-view {
+    position: relative;
+    display: flex;
+    border-color: var(--node-accent-color);
+    color: var(--node-accent-color);
+    border-bottom: solid 1px;
+    background: var(--node-background-color);
+}
+
+.universal-tree .tree-node > .node-view:hover {
+    --node-background-color: #eee;
+}
+
+.universal-tree .tree-node > .node-view > .open {
+    border-color: var(--node-accent-color);
+    border-left: solid var(--node-indent);
+    border-right: solid 1px;
+    width: 20px;
+    min-width: 20px;
+    position: relative;
+}
+
+.universal-tree .tree-node > .node-view > .open::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    content: "+";
+}
+
+.universal-tree .tree-node > .node-view > .open[data-has-children="false"]::after {
+    content: "";
+}
+
+.universal-tree .tree-node > .node-view > .open[data-has-children="true"][data-is-open="true"]::after {
+    content: "-";
+}
+
+.universal-tree .tree-node > .node-view > .label {
+    padding: 5px 10px;
+}
+
+.universal-tree .tree-node > .sub-nodes {
+    padding-left: var(--node-indent);
+}
+
+.universal-tree .tree-node > .sub-nodes > .tree-slot {
+    position: relative;
+}
+
+.universal-tree .tree-node > .node-view > .tree-slot::after  {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--slot-size);
+}
+
+.universal-tree .tree-node .tree-slot::after {
+    display: block;
+    content: "";
+    border: solid 1px;
+    border-color: var(--slot-accent-color);
+    background-color: var(--slot-background-color);
+    z-index: 10000;
+    transition: background-color 0.1s;
+}
+
+.universal-tree .tree-node > .sub-nodes > .tree-slot::after {
+    position: absolute;
+    top: 0;
+    left: var(--slot-size);
+    height: var(--slot-size);
+    width: calc(100% - var(--slot-size));
+    border-radius: calc(0.5 * var(--slot-size));
+    transform: translateY(-50%);
+}
+
+.universal-tree .tree-node .tree-slot[data-is-active="true"]::after {
+    --slot-accent-color: rgba(0, 0, 0, 0.1);
+    --slot-background-color: rgba(0, 0, 0, 0.2);
+}

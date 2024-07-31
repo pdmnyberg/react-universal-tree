@@ -1,0 +1,10 @@
+services:
+  node-22:
+    image: node:22
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ./:/opt/output
+    working_dir: /opt/output
+    ports:
+      - "127.0.0.1:5173:5173"
+
