@@ -1,125 +1,188 @@
 import React from 'react'
-import {Node, NodeId, Slot} from '../types'
+import {
+    Entity,
+    EntityId,
+    Item,
+    ItemDescriptor,
+    HierarchyEntity,
+    HierarchySlot,
+    EntityState
+} from '../types'
 
-export type NodeTreeManager = {
-    nodeList: Node[];
-    getNode(id: NodeId): Node;
-    getChildren(parentId: NodeId): Node[];
-    updateNode(node: Partial<Node> & Pick<Node, "id">, position?: number): void;
+export type HierarchyManager = {
+    entityList: HierarchyEntity[];
+    getChildren(entity: Entity): HierarchyEntity[];
+    moveEntity(entity: Entity, slot: HierarchySlot): void;
 }
 
-export type SelectionManager = {
-    isSelected(node: Pick<Node, "id">): boolean;
-    toggleSelect(node: Pick<Node, "id">): void;
+export type ItemManager = {
+    getItem(entity: Entity): Item;
+    updateItem(item: Partial<ItemDescriptor> & Entity): void;
 }
 
-export const NodeTreeContext = React.createContext<NodeTreeManager>({
-    nodeList: [],
-    getNode(id: NodeId): Node {
-        return {
-            id: id,
-            label: id,
-            parentId: null,
-        }
-    },
-    getChildren(_: NodeId): Node[] {
-        return [];
-    },
-    updateNode(_: Partial<Node> & Pick<Node, "id">) {}
-})
+export type EntityStateManager = {
+    getState(entity: Entity): EntityState;
+    updateState(entity: Entity, state: Partial<EntityState>): void;
+}
 
 type DragManager = {
-    dragNode: (node: Node | null) => void;
-    dropNode: (slot: Slot | null) => void;
-    currentNode: Node | null;
+    drag: (entity: Entity | null) => void;
+    drop: (slot: HierarchySlot | null) => void;
+    currentEntity: Entity | null;
 }
 
+export const HierarchyContext = React.createContext<HierarchyManager>({
+    entityList: [],
+    getChildren() {return []},
+    moveEntity() {}
+})
+
+export const ItemContext = React.createContext<ItemManager>({
+    getItem() {return {id: "", label: ""}},
+    updateItem() {},
+})
+
+export const EntityStateContext = React.createContext<EntityStateManager>({
+    getState() {return {isOpen: true, isSelected: false}},
+    updateState() {}
+})
+
 export const DragContext = React.createContext<DragManager>({
-    dragNode(n) {
+    drag(n) {
        console.log(n);
     },
-    dropNode(s) {
+    drop(s) {
         console.log(s);
     },
-    currentNode: null
+    currentEntity: null
 })
 
-export const SelectionContext = React.createContext<SelectionManager>({
-    isSelected() {return false},
-    toggleSelect() {}
-})
-
-function moveNode(nodeList: Node[], node: Node, position: number) {
-    const nodeIndex = nodeList.findIndex((n) => n.id === node.id);
-    const newIndex = nodeList.findIndex((() => {
+function moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: HierarchySlot) {
+    const updatedEntityList = entityList.filter(e => e.id !== entity.id);
+    const insertIndex = updatedEntityList.findIndex((() => {
         let currentPos = 0;
-        return (n: Node) => {
-            if (currentPos === position) {
+        return (e: HierarchyEntity) => {
+            if (currentPos === slot.position) {
                 return true;
             }
-            if (n.parentId === node.parentId) {
+            if (e.parentId === slot.parentId) {
                 currentPos++;
             }
             return false;
         }
     })())
-    const insertIndex = newIndex === -1 ? nodeList.length - 1 : (
-        newIndex > nodeIndex ? newIndex - 1 : newIndex
-    )
-    nodeList.splice(nodeIndex, 1);
-    nodeList.splice(insertIndex, 0, node);
+    updatedEntityList.splice(
+        insertIndex,
+        0,
+        {id: entity.id, parentId: slot.parentId, position: slot.position}
+    );
+    const positionAcc: {[x: EntityId]: number} = {};
+    return updatedEntityList.map(e => {
+        const currentPosition = positionAcc[e.id] || 0
+        positionAcc[e.id] = currentPosition + 1;
+        return {
+            ...e,
+            position: currentPosition
+        }
+    });
 }
 
-export function useNodeListManager(initialNodeList: Node[]): NodeTreeManager & {setNodeList(l: Node[]): void} {
-    const [nodeList, setNodeList] = React.useState(initialNodeList);
+export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager & {setEntityList(entityList: HierarchyEntity[]): void} {
+    const [entityList, setEntityList] = React.useState(initialEntityList);
     return {
-        nodeList: nodeList,
-        getNode(id: NodeId) {return nodeList.filter(n => n.id === id)[0]},
-        getChildren(parentId: NodeId) {return nodeList.filter(n => n.parentId === parentId)},
-        updateNode(node: Partial<Node> & Pick<Node, "id">, position?: number) {
-            const nodeIndex = nodeList.findIndex(n => n.id === node.id);
-            const updatedNode = {...nodeList[nodeIndex], ...node};
-            const updatedNodeList = [...nodeList];
-            if (position !== undefined) {
-                moveNode(updatedNodeList, updatedNode, position);
-            } else {
-                updatedNodeList[nodeIndex] = updatedNode;
-            }
-            setNodeList(updatedNodeList);
+        entityList,
+        getChildren(entity: Entity) {return entityList.filter(n => n.parentId === entity.id)},
+        moveEntity(entity: Entity, slot: HierarchySlot) {
+            setEntityList(moveEntity(entityList, entity, slot));
         },
-        setNodeList(nodeList: Node[]) {
-            setNodeList(nodeList)
-        }
+        setEntityList
     };
 }
 
-export function useDragManager(nodeManager: NodeTreeManager): DragManager {
-    const [currentNode, dragNode] = React.useState<Node | null>(null);
+export function useDragManager(hierarchyManager: HierarchyManager): DragManager {
+    const [currentEntity, setCurrentEntity] = React.useState<Entity | null>(null);
     return {
-        currentNode,
-        dragNode(n: Node | null) {
-            dragNode(n);
+        currentEntity,
+        drag(entity: Entity | null) {
+            setCurrentEntity(entity);
         },
-        dropNode(s: Slot | null) {
-            if (s && currentNode) {
-                nodeManager.updateNode({id: currentNode.id, parentId: s.parentId}, s.position);
-            }
-            dragNode(null);
+        drop(slot: HierarchySlot | null) {
+            if (slot && currentEntity) {
+                hierarchyManager.moveEntity(currentEntity, slot);
+            };
+            setCurrentEntity(null);
         }
     }
 }
 
-export function useSelectionManager(initialSelection: Pick<Node, "id">[]): SelectionManager {
-    const [selections, setSelections] = React.useState(initialSelection);
-    const isSelected = (node: Pick<Node, "id">) => selections.some(n => n.id === node.id);
+function _getState(states: {[x: EntityId]: EntityState}, entity: Entity) {
+    return states[entity.id] || {
+        isSelected: false,
+        isOpen: false,
+    };
+};
+function _clearSelection(states: {[x: EntityId]: EntityState}) {
+    return Object.keys(states).reduce<{[x: EntityId]: EntityState}>((acc, key) => {
+        acc[key] = {..._getState(states, {id: key}), isSelected: false}
+        return acc;
+    }, {});
+}
+
+export function useEntityStateManager(
+    initialStates: {[x: EntityId]: EntityState},
+    initialMultiSelect: boolean = false
+): EntityStateManager & {setUseMultiSelect: (useMultiSelect: boolean) => void} {
+    const [states, setStates] = React.useState(initialStates);
+    const [useMultiSelect, setUseMultiSelect] = React.useState(initialMultiSelect);
+    
     return {
-        isSelected,
-        toggleSelect(node) {
-            if (isSelected(node)) {
-                setSelections([])
-            } else {
-                setSelections([node])
-            }
+        getState(entity) {
+            return _getState(states, entity);
+        },
+        updateState(entity, state) {
+            const allStates = (
+                useMultiSelect
+                    ? states
+                    : state.isSelected
+                        ? _clearSelection(states)
+                        : states
+            );
+            const currentState = _getState(states, entity);
+            setStates({
+                ...allStates,
+                [entity.id]: {
+                    ...currentState,
+                    ...state
+                }
+            });
+        },
+        setUseMultiSelect(value: boolean) {
+            setUseMultiSelect(value);
+            setStates(_clearSelection(states));
+        }
+    }
+}
+
+export function useBasicItemManager(initialItemList: Item[]): ItemManager {
+    const [items, setItems] = React.useState(() => {
+        return initialItemList.reduce<{[x: EntityId]: Item}>((acc, item) => {
+            acc[item.id] = item;
+            return acc;
+        }, {})
+    });
+    function getItem(entity: Entity) {
+        return items[entity.id];
+    }
+    return {
+        getItem,
+        updateItem(item) {
+            setItems({
+                ...items,
+                [item.id]: {
+                    ...getItem(item),
+                    ...item,
+                }
+            });
         }
     }
 }

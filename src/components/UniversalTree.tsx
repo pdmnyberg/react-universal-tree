@@ -1,68 +1,68 @@
 import React, { Fragment } from 'react'
-import { Node, NodeId, Slot } from '../types'
-import { NodeTreeContext,  DragContext, SelectionContext } from '../contexts';
+import { Entity, HierarchySlot, Item } from '../types'
+import { HierarchyContext, DragContext, EntityStateContext, ItemContext } from '../contexts';
 import './UniversalTree.css'
 
 export function UniversalTree() {
-    const nodeManager = React.useContext(NodeTreeContext);
-    const {dropNode, currentNode} = React.useContext(DragContext);
-    const rootNodes = nodeManager.nodeList.filter(n => n.parentId === null);
-    const showSlots = !!currentNode;
+    const hierarchyManager = React.useContext(HierarchyContext);
+    const {drop, currentEntity} = React.useContext(DragContext);
+    const rootEntities = hierarchyManager.entityList.filter(n => n.parentId === null);
+    const showSlots = !!currentEntity;
 
     return (
         <div className="universal-tree">
-            {rootNodes.map((node, index) => (
-                <Fragment key={node.id}>
+            {rootEntities.map((entity, index) => (
+                <Fragment key={entity.id}>
                     {showSlots ? <TreeSlot
                         slot={{parentId: null, position: index}}
-                        onDrop={dropNode}
+                        onDrop={drop}
                     /> : <></>}
-                    <BoundTreeNode id={node.id} showSlots={true}/>
+                    <BoundTreeNode entity={entity} showSlots={true}/>
                 </Fragment>
             ))}
             {showSlots ? <TreeSlot
-                slot={{parentId: null, position: rootNodes.length}}
-                onDrop={dropNode}
+                slot={{parentId: null, position: rootEntities.length}}
+                onDrop={drop}
             /> : <></>}
         </div>
     )
 }
 
-export function BoundTreeNode({id, showSlots}: {id: NodeId, showSlots: boolean}) {
-    const {isSelected, toggleSelect} = React.useContext(SelectionContext);
-    const nodeManager = React.useContext(NodeTreeContext);
-    const {dragNode, dropNode, currentNode} = React.useContext(DragContext);
-    const node = nodeManager.getNode(id);
-    const nodeList = nodeManager.getChildren(id);
-    const toggleNodeOpen = (id: NodeId, isOpen: boolean) => {
-        nodeManager.updateNode({id, isOpen});
-    }
-    const isCurrentNode = currentNode && currentNode.id === node.id;
-    showSlots = showSlots && !!currentNode && !isCurrentNode;
+export function BoundTreeNode({entity, showSlots}: {entity: Entity, showSlots: boolean}) {
+    const {getState, updateState} = React.useContext(EntityStateContext);
+    const hierarchyManager = React.useContext(HierarchyContext);
+    const itemManager = React.useContext(ItemContext);
+    const {drag, drop, currentEntity} = React.useContext(DragContext);
+    const nodeList = hierarchyManager.getChildren(entity);
+    const isCurrentNode = currentEntity && currentEntity.id === entity.id;
+    showSlots = showSlots && !!currentEntity && !isCurrentNode;
+    const state = getState(entity);
+    const item = itemManager.getItem(entity);
     return (
         <TreeNode
-            node={node}
-            isSelected={isSelected(node)}
-            onSelect={() => toggleSelect(node)}
-            onDragChange={dragNode}
-            onToggleOpen={(isOpen) => toggleNodeOpen(node.id, isOpen)}
+            item={item}
+            isOpen={state.isOpen}
+            isSelected={state.isSelected}
+            onSelect={(isSelected) => updateState(entity, {isSelected})}
+            onDragChange={drag}
+            onOpen={(isOpen) => updateState(entity, {isOpen})}
             insertSlot={
                 showSlots ? <TreeSlot
-                    slot={{position: nodeList.length, parentId: node.id}}
-                    onDrop={dropNode}
+                    slot={{position: nodeList.length, parentId: entity.id}}
+                    onDrop={drop}
                 /> : undefined
             }
         >
-            {nodeList.map((n, index) => {
+            {nodeList.map((e, index) => {
                 return (
-                    <Fragment key={n.id}>
+                    <Fragment key={e.id}>
                         {showSlots
                             ? <TreeSlot
-                                slot={{parentId: node.id, position: index}}
-                                onDrop={dropNode}
+                                slot={{parentId: entity.id, position: index}}
+                                onDrop={drop}
                             />
                             : <></>}
-                        <BoundTreeNode id={n.id} showSlots={showSlots}/>
+                        <BoundTreeNode entity={e} showSlots={showSlots}/>
                     </Fragment>
                 );
             })}
@@ -70,7 +70,7 @@ export function BoundTreeNode({id, showSlots}: {id: NodeId, showSlots: boolean})
     )
 }
 
-export function TreeSlot(props: {slot: Slot, onDrop?: (slot: Slot) => void}) {
+export function TreeSlot(props: {slot: HierarchySlot, onDrop?: (slot: HierarchySlot) => void}) {
     const [isActive, setIsActive] = React.useState(false);
     const {onDrop, slot} = {
         onDrop: () => {},
@@ -106,31 +106,33 @@ export function TreeSlot(props: {slot: Slot, onDrop?: (slot: Slot) => void}) {
 
 export function TreeNode(
     props: {
-        node: Node;
-        onToggleOpen?: (isOpen: boolean) => void;
-        onDragChange?: (node: Node | null) => void;
-        onSelect?: () => void;
+        item: Item;
+        onOpen?: (isOpen: boolean) => void;
+        onDragChange?: (entity: Entity | null) => void;
+        onSelect?: (isSelected: boolean) => void;
         isSelected?: boolean;
+        isOpen?: boolean;
         children?: JSX.Element[];
         insertSlot?: JSX.Element;
     }
 ) {
     const {
-        node,
+        item,
         children,
         insertSlot,
         isSelected,
+        isOpen,
         onDragChange,
-        onToggleOpen,
+        onOpen,
         onSelect,
     } = {
         isSelected: false,
+        isOpen: true,
         onDragChange: () => {},
-        onToggleOpen: () => {},
+        onOpen: () => {},
         onSelect: () => {},
         ...props
     };
-    const isOpen = !!node.isOpen;
     const useChildren = React.Children.toArray(children);
     const hasChildren = useChildren.length > 0;
     return (
@@ -141,11 +143,11 @@ export function TreeNode(
                 onClick={(event) => {
                     event.stopPropagation();
                     event.preventDefault();
-                    onSelect();
+                    onSelect(!isSelected);
                 }}
                 onDragStart={(event) => {
                     event.stopPropagation();
-                    onDragChange(node);
+                    onDragChange(item);
                 }}
                 onDragEnd={(event) => {
                     event.stopPropagation();
@@ -160,11 +162,11 @@ export function TreeNode(
                     onClick={(event) => {
                         event.stopPropagation();
                         event.preventDefault();
-                        onToggleOpen(!isOpen)
+                        onOpen(!isOpen)
                     }}
                 />
-                {node.icon ? <span className="icon" data-icon={node.icon}></span> : <></>}
-                <span className="label">{node.label}</span>
+                {item.icon ? <span className="icon" data-icon={item.icon}></span> : <></>}
+                <span className="label">{item.label}</span>
             </div>
             {isOpen ? (
                 <div className="sub-nodes">
