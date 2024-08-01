@@ -20,7 +20,13 @@
     border-color: var(--node-accent-color);
     color: var(--node-accent-color);
     border-bottom: solid 1px;
-    background: var(--node-background-color);
+    background-color: var(--node-background-color);
+    transition: background-color 0.1s, border-color 0.1s;
+}
+
+.universal-tree .tree-node[data-selected="true"] > .node-view {
+    --node-background-color: #ccc;
+    --node-accent-color: #fff;
 }
 
 .universal-tree .tree-node > .node-view:hover {
