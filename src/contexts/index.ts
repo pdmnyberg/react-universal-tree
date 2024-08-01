@@ -13,9 +13,19 @@ export type HierarchyManager = {
     entityList: HierarchyEntity[];
     getChildren(entity: Entity): HierarchyEntity[];
     moveEntity(entity: Entity, slot: HierarchySlot): void;
+    addEntity(entity: Entity, slot: HierarchySlot): void;
+}
+
+export type EntityManager = {
+    createEntity(): Entity;
+}
+
+export type ActionManager = {
+    triggerAction(entity: Entity, actionId: string): void;
 }
 
 export type ItemManager = {
+    addItem(item: Item): void;
     getItem(entity: Entity): Item;
     updateItem(item: Partial<ItemDescriptor> & Entity): void;
 }
@@ -31,13 +41,19 @@ type DragManager = {
     currentEntity: Entity | null;
 }
 
+export const ActionContext = React.createContext<ActionManager>({
+    triggerAction(entity, actionId) {console.log(entity, actionId)},
+})
+
 export const HierarchyContext = React.createContext<HierarchyManager>({
     entityList: [],
     getChildren() {return []},
-    moveEntity() {}
+    moveEntity() {},
+    addEntity() {},
 })
 
 export const ItemContext = React.createContext<ItemManager>({
+    addItem() {},
     getItem() {return {id: "", label: ""}},
     updateItem() {},
 })
@@ -57,7 +73,19 @@ export const DragContext = React.createContext<DragManager>({
     currentEntity: null
 })
 
-function moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: HierarchySlot) {
+export function useBasicEntityManager(initialCounter: number): EntityManager {
+    const [counter, setCounter] = React.useState(initialCounter);
+    return {
+        createEntity() {
+            setCounter(counter + 1);
+            return {
+                id: `entity-${counter}`
+            };
+        }
+    }
+}
+
+function _moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: HierarchySlot) {
     const updatedEntityList = entityList.filter(e => e.id !== entity.id);
     const insertIndex = updatedEntityList.findIndex((() => {
         let currentPos = 0;
@@ -87,15 +115,17 @@ function moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: Hierarc
     });
 }
 
-export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager & {setEntityList(entityList: HierarchyEntity[]): void} {
+export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager {
     const [entityList, setEntityList] = React.useState(initialEntityList);
     return {
         entityList,
         getChildren(entity: Entity) {return entityList.filter(n => n.parentId === entity.id)},
         moveEntity(entity: Entity, slot: HierarchySlot) {
-            setEntityList(moveEntity(entityList, entity, slot));
+            setEntityList(_moveEntity(entityList, entity, slot));
         },
-        setEntityList
+        addEntity(entity: Entity, slot: HierarchySlot) {
+            setEntityList(_moveEntity(entityList, entity, slot));
+        }
     };
 }
 
@@ -174,6 +204,9 @@ export function useBasicItemManager(initialItemList: Item[]): ItemManager {
         return items[entity.id];
     }
     return {
+        addItem(item: Item) {
+            setItems({...items, [item.id]: item});
+        },
         getItem,
         updateItem(item) {
             setItems({

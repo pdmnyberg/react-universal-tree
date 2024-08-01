@@ -38,8 +38,24 @@
     border-left: solid var(--node-indent);
     border-right: solid 1px;
     width: 20px;
-    min-width: 20px;
+    flex-grow: 0;
+    flex-shrink: 0;
     position: relative;
+}
+
+.universal-tree .tree-node > .node-view > .action {
+    border-color: var(--node-accent-color);
+    background-color: var(--node-background-color);
+    border-left: solid 1px;
+    width: 20px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.universal-tree .tree-node > .node-view > .action:hover {
+    --node-accent-color: #fff;
+    --node-background-color: #ccc;
 }
 
 .universal-tree .tree-node > .node-view > .open::after {
@@ -59,6 +75,8 @@
 }
 
 .universal-tree .tree-node > .node-view > .label {
+    flex-grow: 1;
+    flex-shrink: 1;
     padding: 5px 10px;
 }
 

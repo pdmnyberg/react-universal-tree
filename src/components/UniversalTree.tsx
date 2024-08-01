@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react'
 import { Entity, HierarchySlot, Item } from '../types'
-import { HierarchyContext, DragContext, EntityStateContext, ItemContext } from '../contexts';
+import { HierarchyContext, DragContext, EntityStateContext, ItemContext, ActionContext } from '../contexts';
 import './UniversalTree.css'
 
 export function UniversalTree() {
@@ -32,6 +32,7 @@ export function BoundTreeNode({entity, showSlots}: {entity: Entity, showSlots: b
     const {getState, updateState} = React.useContext(EntityStateContext);
     const hierarchyManager = React.useContext(HierarchyContext);
     const itemManager = React.useContext(ItemContext);
+    const {triggerAction} = React.useContext(ActionContext);
     const {drag, drop, currentEntity} = React.useContext(DragContext);
     const nodeList = hierarchyManager.getChildren(entity);
     const isCurrentNode = currentEntity && currentEntity.id === entity.id;
@@ -52,6 +53,7 @@ export function BoundTreeNode({entity, showSlots}: {entity: Entity, showSlots: b
                     onDrop={drop}
                 /> : undefined
             }
+            onAction={triggerAction}
         >
             {nodeList.map((e, index) => {
                 return (
@@ -110,6 +112,7 @@ export function TreeNode(
         onOpen?: (isOpen: boolean) => void;
         onDragChange?: (entity: Entity | null) => void;
         onSelect?: (isSelected: boolean) => void;
+        onAction?: (entity: Entity, actionId: string) => void; 
         isSelected?: boolean;
         isOpen?: boolean;
         children?: JSX.Element[];
@@ -125,12 +128,14 @@ export function TreeNode(
         onDragChange,
         onOpen,
         onSelect,
+        onAction,
     } = {
         isSelected: false,
         isOpen: true,
         onDragChange: () => {},
         onOpen: () => {},
         onSelect: () => {},
+        onAction: () => {},
         ...props
     };
     const useChildren = React.Children.toArray(children);
@@ -167,6 +172,18 @@ export function TreeNode(
                 />
                 {item.icon ? <span className="icon" data-icon={item.icon}></span> : <></>}
                 <span className="label">{item.label}</span>
+                {item.actions ? <>{item.actions.map(action => (
+                    <span
+                        key={action.actionId}
+                        className="action"
+                        aria-label={action.label}
+                        data-icon={action.icon}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onAction(item, action.actionId);
+                        }}></span>
+                ))}</> : <></>}
             </div>
             {isOpen ? (
                 <div className="sub-nodes">
