@@ -44,7 +44,22 @@ type AppData = {
 function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWithContent {
   return {
     label: `<New Entity: ${entity.id}>`,
-    actions: [
+    content: {
+      type: "node",
+    },
+    ...entity,
+    ...item,
+  }
+}
+
+function getItemActions(item: ItemWithContent) {
+  const removeNode = {
+    label: "Remove node",
+    actionId: "remove-node",
+    icon: "",
+  };
+  if (["node", "layout-group"].includes(item.content.type)) {
+    return [
       {
         label: "Add node",
         actionId: "add-node",
@@ -54,14 +69,13 @@ function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWi
         label: "Add text",
         actionId: "add-text",
         icon: "",
-      }
-    ],
-    content: {
-      type: "node",
-    },
-    ...entity,
-    ...item,
+      },
+      removeNode
+    ]
   }
+  return [
+    removeNode
+  ]
 }
 
 function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity & Partial<ItemWithContent>) => void}) {
@@ -119,7 +133,10 @@ function App() {
   }, []);
   const entityManager = useBasicEntityManager(appData.counter);
   const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
-  const itemManager = useBasicItemManager<ItemWithContent>(appData.items);
+  const itemManager = useBasicItemManager<ItemWithContent>(
+    appData.items,
+    getItemActions
+  );
   function hasMatchingSlot(_: Entity, target: Entity) {
     const targetItem = itemManager.getItem(target);
     if (["text"].includes(targetItem.content.type)) {
@@ -147,12 +164,16 @@ function App() {
             {
               label: `<Text-${newEntity.id}>`,
               content: {type: "text", value: ""},
-              actions: undefined,
             }
           );
           itemManager.addItem(item);
           stateManager.updateState(entity, {isOpen: true});
           hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+          break;
+        }
+        case "remove-node": {
+          hierarchyManager.removeEntity(entity);
+          itemManager.removeItem(entity);
           break;
         }
       }

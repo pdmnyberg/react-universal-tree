@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react'
-import { Entity, HierarchySlot, Item } from '../types'
+import { Entity, HierarchySlot, Item, ItemAction } from '../types'
 import { HierarchyContext, DragContext, EntityStateContext, ItemContext, ActionContext } from '../contexts';
 import './UniversalTree.css'
 
@@ -39,9 +39,11 @@ export function BoundTreeNode({entity, showSlots}: {entity: Entity, showSlots: b
     showSlots = showSlots && !!currentEntity && hasMatchingSlot(currentEntity, entity) && !isCurrentNode;
     const state = getState(entity);
     const item = itemManager.getItem(entity);
+    const actions = itemManager.getActions(entity);
     return (
         <TreeNode
             item={item}
+            actions={actions}
             isOpen={state.isOpen}
             isSelected={state.isSelected}
             onSelect={(isSelected) => updateState(entity, {isSelected})}
@@ -109,6 +111,7 @@ export function TreeSlot(props: {slot: HierarchySlot, onDrop?: (slot: HierarchyS
 export function TreeNode(
     props: {
         item: Item;
+        actions?: ItemAction[],
         onOpen?: (isOpen: boolean) => void;
         onDragChange?: (entity: Entity | null) => void;
         onSelect?: (isSelected: boolean) => void;
@@ -121,6 +124,7 @@ export function TreeNode(
 ) {
     const {
         item,
+        actions,
         children,
         insertSlot,
         isSelected,
@@ -172,7 +176,7 @@ export function TreeNode(
                 />
                 {item.icon ? <span className="icon" data-icon={item.icon}></span> : <></>}
                 <span className="label">{item.label || "<Unnamed node>"}</span>
-                {item.actions ? <>{item.actions.map(action => (
+                {actions ? <>{actions.map(action => (
                     <span
                         key={action.actionId}
                         className="action"

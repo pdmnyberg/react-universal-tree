@@ -3,6 +3,7 @@ import {
     Entity,
     EntityId,
     Item,
+    ItemAction,
     HierarchyEntity,
     HierarchySlot,
     EntityState
@@ -24,6 +25,7 @@ export type ActionManager = {
 
 export type ItemManager<T extends Item> = {
     getItem(entity: Entity): T;
+    getActions(entity: Entity): ItemAction[] | undefined;
     updateItem(item: Partial<T> & Entity): void;
 }
 
@@ -51,6 +53,7 @@ export const HierarchyContext = React.createContext<HierarchyManager>({
 
 export const ItemContext = React.createContext<ItemManager<Item>>({
     getItem() {return {id: "", label: ""}},
+    getActions() {return undefined},
     updateItem() {},
 })
 
@@ -115,7 +118,12 @@ function _moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: Hierar
     });
 }
 
-export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager & {addEntity(entity: Entity, slot: HierarchySlot): void} {
+export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): (
+    HierarchyManager & {
+        addEntity(entity: Entity, slot: HierarchySlot): void;
+        removeEntity(entity: Entity): void;
+    }
+) {
     const [entityList, setEntityList] = React.useState(initialEntityList);
     return {
         entityList,
@@ -125,6 +133,9 @@ export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): 
         },
         addEntity(entity: Entity, slot: HierarchySlot) {
             setEntityList(_moveEntity(entityList, entity, slot));
+        },
+        removeEntity(entity: Entity) {
+            setEntityList(entityList.filter(e => e.id !== entity.id));
         }
     };
 }
@@ -197,7 +208,15 @@ export function useEntityStateManager(
     }
 }
 
-export function useBasicItemManager<T extends Item>(initialItemList: T[]): ItemManager<T> & {addItem(item: T): void} {
+export function useBasicItemManager<T extends Item>(
+    initialItemList: T[],
+    getActions: (item: T) => ItemAction[] | undefined = () => undefined
+): (
+    ItemManager<T> & {
+        addItem(item: T): void;
+        removeItem(entity: Entity): void;
+    }
+) {
     const [items, setItems] = React.useState(() => {
         return initialItemList.reduce<{[x: EntityId]: T}>((acc, item) => {
             acc[item.id] = item;
@@ -207,11 +226,23 @@ export function useBasicItemManager<T extends Item>(initialItemList: T[]): ItemM
     function getItem(entity: Entity) {
         return items[entity.id];
     }
+
     return {
         addItem(item: T) {
             setItems({...items, [item.id]: item});
         },
+        removeItem(entity: Entity) {
+            setItems(Object.values(items).reduce<{[x: EntityId]: T}>((acc, i) => {
+                if (i.id !== entity.id) {
+                    acc[i.id] = i;
+                }
+                return acc;
+            }, {}))
+        },
         getItem,
+        getActions(entity: Entity) {
+            return getActions(getItem(entity));
+        },
         updateItem(item) {
             setItems({
                 ...items,

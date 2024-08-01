@@ -9,13 +9,13 @@ export type ItemDescriptor = {
     label: string;
 }
 
-export type Item = ItemDescriptor & Entity & {
-    actions?: (
-        ItemDescriptor & {
-            actionId: string;
-        }
-    )[]
-}
+export type ItemAction = (
+    ItemDescriptor & {
+        actionId: string;
+    }
+)
+
+export type Item = ItemDescriptor & Entity;
 
 export type HierarchySlot = {
     parentId: EntityId | null;
