@@ -33,8 +33,9 @@ export type EntityStateManager = {
 }
 
 type DragManager = {
-    drag: (entity: Entity | null) => void;
-    drop: (slot: HierarchySlot | null) => void;
+    drag(entity: Entity | null): void;
+    drop(slot: HierarchySlot | null): void;
+    hasMatchingSlot(sourceEntity: Entity, targetEntity: Entity): boolean;
     currentEntity: Entity | null;
 }
 
@@ -65,7 +66,10 @@ export const DragContext = React.createContext<DragManager>({
     drop(s) {
         console.log(s);
     },
-    currentEntity: null
+    hasMatchingSlot() {
+        return false;
+    },
+    currentEntity: null,
 })
 
 export function useBasicEntityManager(initialCounter: number): EntityManager & {counter: number} {
@@ -125,7 +129,10 @@ export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): 
     };
 }
 
-export function useDragManager(hierarchyManager: HierarchyManager): DragManager {
+export function useDragManager(
+    hierarchyManager: HierarchyManager,
+    hasMatchingSlot: (s: Entity, t: Entity) => boolean = () => true,
+): DragManager {
     const [currentEntity, setCurrentEntity] = React.useState<Entity | null>(null);
     return {
         currentEntity,
@@ -137,7 +144,8 @@ export function useDragManager(hierarchyManager: HierarchyManager): DragManager 
                 hierarchyManager.moveEntity(currentEntity, slot);
             };
             setCurrentEntity(null);
-        }
+        },
+        hasMatchingSlot
     }
 }
 

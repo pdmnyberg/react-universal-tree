@@ -33,10 +33,10 @@ export function BoundTreeNode({entity, showSlots}: {entity: Entity, showSlots: b
     const hierarchyManager = React.useContext(HierarchyContext);
     const itemManager = React.useContext(ItemContext);
     const {triggerAction} = React.useContext(ActionContext);
-    const {drag, drop, currentEntity} = React.useContext(DragContext);
+    const {drag, drop, hasMatchingSlot, currentEntity} = React.useContext(DragContext);
     const nodeList = hierarchyManager.getChildren(entity);
     const isCurrentNode = currentEntity && currentEntity.id === entity.id;
-    showSlots = showSlots && !!currentEntity && !isCurrentNode;
+    showSlots = showSlots && !!currentEntity && hasMatchingSlot(currentEntity, entity) && !isCurrentNode;
     const state = getState(entity);
     const item = itemManager.getItem(entity);
     return (

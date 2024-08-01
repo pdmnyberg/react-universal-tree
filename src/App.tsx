@@ -120,7 +120,14 @@ function App() {
   const entityManager = useBasicEntityManager(appData.counter);
   const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
   const itemManager = useBasicItemManager<ItemWithContent>(appData.items);
-  const dragManager = useDragManager(hierarchyManager);
+  function hasMatchingSlot(_: Entity, target: Entity) {
+    const targetItem = itemManager.getItem(target);
+    if (["text"].includes(targetItem.content.type)) {
+      return false;
+    }
+    return true;
+  }
+  const dragManager = useDragManager(hierarchyManager, hasMatchingSlot);
   const stateManager = useEntityStateManager(appData.state);
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
