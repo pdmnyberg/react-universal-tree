@@ -3,7 +3,6 @@ import {
     Entity,
     EntityId,
     Item,
-    ItemDescriptor,
     HierarchyEntity,
     HierarchySlot,
     EntityState
@@ -69,7 +68,7 @@ export const DragContext = React.createContext<DragManager>({
     currentEntity: null
 })
 
-export function useBasicEntityManager(initialCounter: number): EntityManager {
+export function useBasicEntityManager(initialCounter: number): EntityManager & {counter: number} {
     const [counter, setCounter] = React.useState(initialCounter);
     return {
         createEntity() {
@@ -77,7 +76,8 @@ export function useBasicEntityManager(initialCounter: number): EntityManager {
             return {
                 id: `entity-${counter}`
             };
-        }
+        },
+        counter: counter,
     }
 }
 

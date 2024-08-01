@@ -1,3 +1,4 @@
+import React from 'react'
 import { UniversalTree } from './components/UniversalTree'
 import {
   HierarchyContext,
@@ -12,7 +13,7 @@ import {
   ActionManager,
   ActionContext
 } from './contexts';
-import { Entity, Item } from './types';
+import { Entity, EntityState, HierarchyEntity, Item } from './types';
 import "./App.css";
 
 type ItemWithContent = Item & {
@@ -29,6 +30,15 @@ type ItemWithContent = Item & {
       columns: number;
     }
   )
+}
+
+type AppData = {
+  items: ItemWithContent[];
+  hierarchy: HierarchyEntity[];
+  state: {
+    [x: string]: EntityState;
+  },
+  counter: number,
 }
 
 function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWithContent {
@@ -90,52 +100,28 @@ function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity 
 }
 
 function App() {
-  const entityManager = useBasicEntityManager(0);
-  const data = [
-    {
-      id: "a",
-      parentId: null,
-      label: "Root node A",
-    },
-    {
-      id: "a.a",
-      parentId: "a",
-      label: "AA",
-    },
-    {
-      id: "a.b",
-      parentId: "a",
-      label: "AB",
-    },
-    {
-      id: "b",
-      parentId: null,
-      label: "Root node B",
-    },
-    {
-      id: "b.a",
-      parentId: "b",
-      label: "BA",
-    },
-    {
-      id: "b.b",
-      parentId: "b",
-      label: "BB",
-    },
-    {
-      id: "a.b.a",
-      parentId: "a.b",
-      label: "ABA",
-    }
-  ].map((d, index) => ({
-    ...createItem(d, d),
-    parentId: d.parentId,
-    position: index,
-  }));
-  const hierarchyManager = useBasicHierarchyManager(data);
-  const itemManager = useBasicItemManager<ItemWithContent>(data);
+  const appData = React.useMemo<AppData>(() => {
+    const rawData = sessionStorage.getItem("app-data");
+    return rawData ? JSON.parse(rawData) : {
+      items: [
+        createItem(
+          {id: "root"},
+          {
+            label: "Root",
+            content: {type: "node"}
+          }
+        )
+      ],
+      hierarchy: [{id: "root", parentId: null}],
+      state: {},
+      counter: 0,
+    };
+  }, []);
+  const entityManager = useBasicEntityManager(appData.counter);
+  const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
+  const itemManager = useBasicItemManager<ItemWithContent>(appData.items);
   const dragManager = useDragManager(hierarchyManager);
-  const stateManager = useEntityStateManager({});
+  const stateManager = useEntityStateManager(appData.state);
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
       switch (actionId) {
@@ -165,6 +151,18 @@ function App() {
       }
     }
   }
+  React.useEffect(() => {
+    const data: AppData = {
+      items: hierarchyManager.entityList.map(e => itemManager.getItem(e)),
+      hierarchy: hierarchyManager.entityList,
+      state: hierarchyManager.entityList.reduce<AppData["state"]>((acc, e) => {
+        acc[e.id] = stateManager.getState(e);
+        return acc;
+      }, {}),
+      counter: entityManager.counter
+    }
+    sessionStorage.setItem("app-data", JSON.stringify(data));
+  }, [itemManager, hierarchyManager, stateManager, entityManager]);
   const selection = (
     hierarchyManager.entityList
       .filter(e => stateManager.getState(e).isSelected)
