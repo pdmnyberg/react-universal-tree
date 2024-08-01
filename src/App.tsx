@@ -199,6 +199,14 @@ function App() {
   return (
     <div className="app">
       <div className="hierarchy-view">
+        {selection.length > 0 ? <>{
+          (itemManager.getActions(selection[0]) || []).map(action => (
+            <span
+              key={action.actionId}
+              className="button"
+              onClick={() => {actionManager.triggerAction(selection[0], action.actionId)}}>{action.label}</span>
+          ))
+        }</> : <></>}
         <ActionContext.Provider value={actionManager}>
           <HierarchyContext.Provider value={hierarchyManager}>
             <ItemContext.Provider value={itemManager}>
