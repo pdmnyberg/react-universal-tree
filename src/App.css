@@ -1,6 +1,9 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.app {
+  display: flex;
+  flex-direction: row;
+}
+
+.app > .hierarchy-view, .app > .selection-view {
+  flex-grow: 1;
+  flex-shrink: 1;
 }

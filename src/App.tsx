@@ -13,6 +13,7 @@ import {
   ActionContext
 } from './contexts';
 import { Entity, Item } from './types';
+import "./App.css";
 
 function createItem(entity: Entity, item: Partial<Item> = {}): Item {
   return {
@@ -75,29 +76,44 @@ function App() {
   const hierarchyManager = useBasicHierarchyManager(data);
   const itemManager = useBasicItemManager(data);
   const dragManager = useDragManager(hierarchyManager);
-  const selectionManager = useEntityStateManager({});
+  const stateManager = useEntityStateManager({});
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
       if (actionId === "add-node") {
         const newEntity = entityManager.createEntity();
         const item = createItem(newEntity);
         itemManager.addItem(item);
+        stateManager.updateState(entity, {isOpen: true});
         hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
       }
     }
   }
+  const selection = (
+    hierarchyManager.entityList
+      .filter(e => stateManager.getState(e).isSelected)
+      .map(e => itemManager.getItem(e))
+  );
   return (
-    <ActionContext.Provider value={actionManager}>
-      <HierarchyContext.Provider value={hierarchyManager}>
-        <ItemContext.Provider value={itemManager}>
-          <DragContext.Provider value={dragManager}>
-            <EntityStateContext.Provider value={selectionManager}>
-              <UniversalTree/>
-            </EntityStateContext.Provider>
-          </DragContext.Provider>
-        </ItemContext.Provider>
-      </HierarchyContext.Provider>
-    </ActionContext.Provider>
+    <div className="app">
+      <div className="hierarchy-view">
+        <ActionContext.Provider value={actionManager}>
+          <HierarchyContext.Provider value={hierarchyManager}>
+            <ItemContext.Provider value={itemManager}>
+              <DragContext.Provider value={dragManager}>
+                <EntityStateContext.Provider value={stateManager}>
+                  <UniversalTree/>
+                </EntityStateContext.Provider>
+              </DragContext.Provider>
+            </ItemContext.Provider>
+          </HierarchyContext.Provider>
+        </ActionContext.Provider>
+      </div>
+      <div className="selection-view">
+        {selection.map(item => (
+          <div key={item.id} className="selection-item">{item.label}</div>
+        ))}
+      </div>
+    </div>
   )
 }
 
