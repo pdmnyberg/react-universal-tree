@@ -174,13 +174,16 @@ function App() {
   const stateManager = useEntityStateManager(appData.state, multiSelect);
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
+      const slot = {parentId: entity ? entity.id : null, position: 0};
       switch (actionId) {
         case "add-node": {
           const newEntity = entityManager.createEntity();
           const item = createItem(newEntity);
           itemManager.addItem(item);
-          stateManager.updateState(entity, {isOpen: true});
-          hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+          if (entity) {
+            stateManager.updateState(entity, {isOpen: true});
+          }
+          hierarchyManager.addEntity(item, slot);
           break;
         }
         case "add-text": {
@@ -193,13 +196,17 @@ function App() {
             }
           );
           itemManager.addItem(item);
-          stateManager.updateState(entity, {isOpen: true});
-          hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+          if (entity) {
+            stateManager.updateState(entity, {isOpen: true});
+          }
+          hierarchyManager.addEntity(item, slot);
           break;
         }
         case "remove-node": {
-          hierarchyManager.removeEntity(entity);
-          itemManager.removeItem(entity);
+          if (entity) {
+            hierarchyManager.removeEntity(entity);
+            itemManager.removeItem(entity);
+          }
           break;
         }
       }
@@ -235,14 +242,19 @@ function App() {
   return (
     <div className="app">
       <div className="hierarchy-view">
-        {selection.length > 0 ? <>{
-          (itemManager.getActions(selection[0]) || []).map(action => (
-            <span
-              key={action.actionId}
-              className="button"
-              onClick={() => {actionManager.triggerAction(selection[0], action.actionId)}}>{action.label}</span>
-          ))
-        }</> : <></>}
+        <span
+            className="button"
+            onClick={() => {actionManager.triggerAction(null, "add-node")}}>Add root</span>
+        {selection.length > 0 ? <>
+          {
+            (itemManager.getActions(selection[0]) || []).map(action => (
+              <span
+                key={action.actionId}
+                className="button"
+                onClick={() => {actionManager.triggerAction(selection[0], action.actionId)}}>{action.label}</span>
+            ))
+          }
+        </> : <></>}
         <ActionContext.Provider value={actionManager}>
           <HierarchyContext.Provider value={hierarchyManager}>
             <ItemContext.Provider value={itemManager}>

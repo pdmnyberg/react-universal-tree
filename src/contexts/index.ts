@@ -20,7 +20,7 @@ export type EntityManager = {
 }
 
 export type ActionManager = {
-    triggerAction(entity: Entity, actionId: string): void;
+    triggerAction(entity: Entity | null, actionId: string): void;
 }
 
 export type ItemManager<T extends Item> = {
