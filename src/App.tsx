@@ -11,7 +11,10 @@ import {
   useBasicItemManager,
   useBasicEntityManager,
   ActionManager,
-  ActionContext
+  ActionContext,
+  ItemManager,
+  HierarchyManager,
+  EntityStateManager
 } from './contexts';
 import { Entity, EntityState, HierarchyEntity, Item } from './types';
 import "./App.css";
@@ -32,8 +35,8 @@ type ItemWithContent = Item & {
   )
 }
 
-type AppData = {
-  items: ItemWithContent[];
+type AppData<T extends Item> = {
+  items: T[];
   hierarchy: HierarchyEntity[];
   state: {
     [x: string]: EntityState;
@@ -113,24 +116,46 @@ function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity 
   )
 }
 
+function loadAppData<T extends Item>(appId: string): AppData<T> {
+  const rawData = sessionStorage.getItem(appId);
+  return rawData ? JSON.parse(rawData) : {
+    items: [
+      createItem(
+        {id: "root"},
+        {
+          label: "Root",
+          content: {type: "node"}
+        }
+      )
+    ],
+    hierarchy: [{id: "root", parentId: null}],
+    state: {},
+    counter: 0,
+  };
+}
+
+function saveAppData<T extends Item>(
+  appId: string,
+  itemManager: ItemManager<T>,
+  hierarchyManager: HierarchyManager,
+  stateManager: EntityStateManager,
+  entityCounter: number
+) {
+  const data: AppData<T> = {
+    items: hierarchyManager.entityList.map(e => itemManager.getItem(e)),
+    hierarchy: hierarchyManager.entityList,
+    state: hierarchyManager.entityList.reduce<AppData<T>["state"]>((acc, e) => {
+      acc[e.id] = stateManager.getState(e);
+      return acc;
+    }, {}),
+    counter: entityCounter
+  };
+  sessionStorage.setItem(appId, JSON.stringify(data));
+}
+
 function App() {
-  const appData = React.useMemo<AppData>(() => {
-    const rawData = sessionStorage.getItem("app-data");
-    return rawData ? JSON.parse(rawData) : {
-      items: [
-        createItem(
-          {id: "root"},
-          {
-            label: "Root",
-            content: {type: "node"}
-          }
-        )
-      ],
-      hierarchy: [{id: "root", parentId: null}],
-      state: {},
-      counter: 0,
-    };
-  }, []);
+  const appId = "app-data";
+  const appData = React.useMemo(() => loadAppData<ItemWithContent>(appId), []);
   const entityManager = useBasicEntityManager(appData.counter);
   const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
   const itemManager = useBasicItemManager<ItemWithContent>(
@@ -180,17 +205,14 @@ function App() {
     }
   }
   React.useEffect(() => {
-    const data: AppData = {
-      items: hierarchyManager.entityList.map(e => itemManager.getItem(e)),
-      hierarchy: hierarchyManager.entityList,
-      state: hierarchyManager.entityList.reduce<AppData["state"]>((acc, e) => {
-        acc[e.id] = stateManager.getState(e);
-        return acc;
-      }, {}),
-      counter: entityManager.counter
-    }
-    sessionStorage.setItem("app-data", JSON.stringify(data));
-  }, [itemManager, hierarchyManager, stateManager, entityManager]);
+    saveAppData(
+      appId,
+      itemManager,
+      hierarchyManager,
+      stateManager,
+      entityManager.counter
+    );
+  }, [itemManager, hierarchyManager, stateManager, entityManager.counter]);
   const selection = (
     hierarchyManager.entityList
       .filter(e => stateManager.getState(e).isSelected)
