@@ -53,6 +53,14 @@
     position: relative;
 }
 
+.universal-tree .tree-node > .node-view > .action::after {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    content: attr(data-icon);
+    transform: translateX(-50%) translateY(-50%);
+}
+
 .universal-tree .tree-node > .node-view > .action:hover {
     --node-accent-color: #fff;
     --node-background-color: #ccc;

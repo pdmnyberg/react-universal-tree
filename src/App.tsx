@@ -59,19 +59,19 @@ function getItemActions(item: ItemWithContent) {
   const removeNode = {
     label: "Remove node",
     actionId: "remove-node",
-    icon: "",
+    icon: "x",
   };
   if (["node", "layout-group"].includes(item.content.type)) {
     return [
       {
         label: "Add node",
         actionId: "add-node",
-        icon: "",
+        icon: "n",
       },
       {
         label: "Add text",
         actionId: "add-text",
-        icon: "",
+        icon: "t",
       },
       removeNode
     ]
