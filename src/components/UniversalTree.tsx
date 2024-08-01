@@ -171,7 +171,7 @@ export function TreeNode(
                     }}
                 />
                 {item.icon ? <span className="icon" data-icon={item.icon}></span> : <></>}
-                <span className="label">{item.label}</span>
+                <span className="label">{item.label || "<Unnamed node>"}</span>
                 {item.actions ? <>{item.actions.map(action => (
                     <span
                         key={action.actionId}

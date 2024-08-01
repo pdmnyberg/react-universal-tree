@@ -13,7 +13,6 @@ export type HierarchyManager = {
     entityList: HierarchyEntity[];
     getChildren(entity: Entity): HierarchyEntity[];
     moveEntity(entity: Entity, slot: HierarchySlot): void;
-    addEntity(entity: Entity, slot: HierarchySlot): void;
 }
 
 export type EntityManager = {
@@ -24,10 +23,9 @@ export type ActionManager = {
     triggerAction(entity: Entity, actionId: string): void;
 }
 
-export type ItemManager = {
-    addItem(item: Item): void;
-    getItem(entity: Entity): Item;
-    updateItem(item: Partial<ItemDescriptor> & Entity): void;
+export type ItemManager<T extends Item> = {
+    getItem(entity: Entity): T;
+    updateItem(item: Partial<T> & Entity): void;
 }
 
 export type EntityStateManager = {
@@ -49,11 +47,9 @@ export const HierarchyContext = React.createContext<HierarchyManager>({
     entityList: [],
     getChildren() {return []},
     moveEntity() {},
-    addEntity() {},
 })
 
-export const ItemContext = React.createContext<ItemManager>({
-    addItem() {},
+export const ItemContext = React.createContext<ItemManager<Item>>({
     getItem() {return {id: "", label: ""}},
     updateItem() {},
 })
@@ -115,7 +111,7 @@ function _moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: Hierar
     });
 }
 
-export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager {
+export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): HierarchyManager & {addEntity(entity: Entity, slot: HierarchySlot): void} {
     const [entityList, setEntityList] = React.useState(initialEntityList);
     return {
         entityList,
@@ -193,9 +189,9 @@ export function useEntityStateManager(
     }
 }
 
-export function useBasicItemManager(initialItemList: Item[]): ItemManager {
+export function useBasicItemManager<T extends Item>(initialItemList: T[]): ItemManager<T> & {addItem(item: T): void} {
     const [items, setItems] = React.useState(() => {
-        return initialItemList.reduce<{[x: EntityId]: Item}>((acc, item) => {
+        return initialItemList.reduce<{[x: EntityId]: T}>((acc, item) => {
             acc[item.id] = item;
             return acc;
         }, {})
@@ -204,7 +200,7 @@ export function useBasicItemManager(initialItemList: Item[]): ItemManager {
         return items[entity.id];
     }
     return {
-        addItem(item: Item) {
+        addItem(item: T) {
             setItems({...items, [item.id]: item});
         },
         getItem,

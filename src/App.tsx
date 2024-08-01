@@ -15,7 +15,23 @@ import {
 import { Entity, Item } from './types';
 import "./App.css";
 
-function createItem(entity: Entity, item: Partial<Item> = {}): Item {
+type ItemWithContent = Item & {
+  content: (
+    {
+      type: "node";
+    } | {
+      type: "text";
+      value: string;
+    } | {
+      type: "layout-group";
+      layoutType: "flow" | "grid";
+      style: "cards" | "none";
+      columns: number;
+    }
+  )
+}
+
+function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWithContent {
   return {
     label: `<New Entity: ${entity.id}>`,
     actions: [
@@ -23,11 +39,54 @@ function createItem(entity: Entity, item: Partial<Item> = {}): Item {
         label: "Add node",
         actionId: "add-node",
         icon: "",
+      },
+      {
+        label: "Add text",
+        actionId: "add-text",
+        icon: "",
       }
     ],
+    content: {
+      type: "node",
+    },
     ...entity,
     ...item,
   }
+}
+
+function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity & Partial<ItemWithContent>) => void}) {
+  const {item, updateItem} = props;
+  return (
+    <div className="selection-item">
+      <div className="content-section">
+        <label>Label: </label>
+        <input type="text" value={item.label} onChange={(event) => updateItem({id: item.id, label: event.target.value})}/>
+      </div>
+      {(
+        function(content: ItemWithContent["content"]) {
+          switch(content.type) {
+            case "text": return (
+              <div className="content-section">
+                <label>Text: </label>
+                <textarea value={content.value} onChange={(event) => updateItem({id: item.id, content: {...content, value: event.target.value}})}/>
+              </div>
+            );
+            case "layout-group": return (
+              <div className="content-section">
+                layout-g
+              </div>
+            );
+            default:
+              return (
+                <div className="content-section">
+                  {content.type}
+                </div>
+              );
+          }
+        }
+      )(item.content)}
+    </div>
+  )
 }
 
 function App() {
@@ -74,17 +133,35 @@ function App() {
     position: index,
   }));
   const hierarchyManager = useBasicHierarchyManager(data);
-  const itemManager = useBasicItemManager(data);
+  const itemManager = useBasicItemManager<ItemWithContent>(data);
   const dragManager = useDragManager(hierarchyManager);
   const stateManager = useEntityStateManager({});
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
-      if (actionId === "add-node") {
-        const newEntity = entityManager.createEntity();
-        const item = createItem(newEntity);
-        itemManager.addItem(item);
-        stateManager.updateState(entity, {isOpen: true});
-        hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+      switch (actionId) {
+        case "add-node": {
+          const newEntity = entityManager.createEntity();
+          const item = createItem(newEntity);
+          itemManager.addItem(item);
+          stateManager.updateState(entity, {isOpen: true});
+          hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+          break;
+        }
+        case "add-text": {
+          const newEntity = entityManager.createEntity();
+          const item = createItem(
+            newEntity,
+            {
+              label: `<Text-${newEntity.id}>`,
+              content: {type: "text", value: ""},
+              actions: undefined,
+            }
+          );
+          itemManager.addItem(item);
+          stateManager.updateState(entity, {isOpen: true});
+          hierarchyManager.addEntity(item, {parentId: entity.id, position: 0});
+          break;
+        }
       }
     }
   }
@@ -110,7 +187,7 @@ function App() {
       </div>
       <div className="selection-view">
         {selection.map(item => (
-          <div key={item.id} className="selection-item">{item.label}</div>
+          <SelectionItem key={item.id} item={item} updateItem={itemManager.updateItem}/>
         ))}
       </div>
     </div>
