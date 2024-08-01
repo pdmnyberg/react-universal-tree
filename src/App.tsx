@@ -155,6 +155,7 @@ function saveAppData<T extends Item>(
 
 function App() {
   const appId = "app-data";
+  const [multiSelect, setMultiSelect] = React.useState(false);
   const appData = React.useMemo(() => loadAppData<ItemWithContent>(appId), []);
   const entityManager = useBasicEntityManager(appData.counter);
   const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
@@ -170,7 +171,7 @@ function App() {
     return true;
   }
   const dragManager = useDragManager(hierarchyManager, hasMatchingSlot);
-  const stateManager = useEntityStateManager(appData.state);
+  const stateManager = useEntityStateManager(appData.state, multiSelect);
   const actionManager: ActionManager = {
     triggerAction(entity, actionId) {
       switch (actionId) {
@@ -204,6 +205,19 @@ function App() {
       }
     }
   }
+  React.useEffect(() => {
+    function shiftListener(event: KeyboardEvent) {
+      if (event.key === "Shift") {
+        setMultiSelect(event.type === "keydown");
+      }
+    }
+    addEventListener("keydown", shiftListener);
+    addEventListener("keyup", shiftListener);
+    return () => {
+      removeEventListener("keydown", shiftListener);
+      removeEventListener("keyup", shiftListener);
+    };
+  }, [setMultiSelect, multiSelect]);
   React.useEffect(() => {
     saveAppData(
       appId,

@@ -175,20 +175,18 @@ function _clearSelection(states: {[x: EntityId]: EntityState}) {
 
 export function useEntityStateManager(
     initialStates: {[x: EntityId]: EntityState},
-    initialMultiSelect: boolean = false
-): EntityStateManager & {setUseMultiSelect: (useMultiSelect: boolean) => void} {
+    multiSelect: boolean = false
+): EntityStateManager {
     const [states, setStates] = React.useState(initialStates);
-    const [useMultiSelect, setUseMultiSelect] = React.useState(initialMultiSelect);
-    
     return {
         getState(entity) {
             return _getState(states, entity);
         },
         updateState(entity, state) {
             const allStates = (
-                useMultiSelect
+                multiSelect
                     ? states
-                    : state.isSelected
+                    : "isSelected" in state
                         ? _clearSelection(states)
                         : states
             );
@@ -201,10 +199,6 @@ export function useEntityStateManager(
                 }
             });
         },
-        setUseMultiSelect(value: boolean) {
-            setUseMultiSelect(value);
-            setStates(_clearSelection(states));
-        }
     }
 }
 
