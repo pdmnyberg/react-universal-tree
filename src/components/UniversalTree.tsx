@@ -95,7 +95,7 @@ export function TreeSlot(props: { slot: HierarchySlot, onDrop?: (slot: Hierarchy
                 event.stopPropagation();
                 setIsActive(true);
             }}
-            onDragExit={(event) => {
+            onDragLeave={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 setIsActive(false);
