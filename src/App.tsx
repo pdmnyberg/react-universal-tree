@@ -27,13 +27,12 @@ type ItemWithContent = Item & {
     )
 }
 
-function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWithContent {
+function createItem(item: Partial<ItemWithContent> = {}): Omit<ItemWithContent, "id"> {
     return {
         label: `<Node>`,
         content: {
             type: "node",
         },
-        ...entity,
         ...item,
     }
 }
@@ -107,19 +106,18 @@ function itemHasSlots(_: ItemWithContent, target: ItemWithContent) {
 
 function handleAction(
     item: ItemWithContent | null, actionId: string,
-    addItem: (item: ItemWithContent, slot: HierarchySlot) => void,
+    addItem: (item: Omit<ItemWithContent, "id">, slot: HierarchySlot) => void,
     removeItem: (item: Pick<ItemWithContent, "id">) => void
 ) {
     const slot = { parentId: item ? item.id : null, position: 0 };
     switch (actionId) {
         case "add-node": {
-            const item = createItem({ id: "" });
+            const item = createItem();
             addItem(item, slot);
             break;
         }
         case "add-text": {
             const item = createItem(
-                { id: "" },
                 {
                     label: `<Text>`,
                     content: { type: "text", value: "" },

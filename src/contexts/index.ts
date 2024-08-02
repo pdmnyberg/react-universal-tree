@@ -282,7 +282,7 @@ export function useBasicManagers<T extends Item>(
     handleAction: (
         item: T | null,
         actionId: string,
-        addItem: (item: T, slot: HierarchySlot) => void,
+        addItem: (item: Omit<T, "id">, slot: HierarchySlot) => void,
         removeItem: (item: Pick<T, "id">) => void,
     ) => void,
     loadAppData: () => AppData<T>,
@@ -312,12 +312,12 @@ export function useBasicManagers<T extends Item>(
     const stateManager = useEntityStateManager(appData.state, multiSelect);
     const actionManager: ActionManager = {
         triggerAction(entity, actionId) {
-            function addItem(item: T, slot: HierarchySlot) {
+            function addItem(item: Omit<T, "id">, slot: HierarchySlot) {
                 const newEntity = entityManager.createEntity();
                 const newItem: T = {
                     ...item,
                     ...newEntity,
-                }
+                } as T;
                 itemManager.addItem(newItem);
                 if (entity) {
                     stateManager.updateState(entity, { isOpen: true });
