@@ -249,7 +249,7 @@ export function useBasicItemManager<T extends Item>(
     }
 }
 
-type AppData<T extends Item> = {
+export type AppData<T extends Item> = {
     items: T[];
     hierarchy: HierarchyEntity[];
     state: {
@@ -258,21 +258,7 @@ type AppData<T extends Item> = {
     counter: number,
 }
 
-function loadAppData<T extends Item>(
-    appId: string,
-    defaultData: AppData<T> = {
-        items: [],
-        hierarchy: [],
-        state: {},
-        counter: 0,
-    }
-): AppData<T> {
-    const rawData = sessionStorage.getItem(appId);
-    return rawData ? JSON.parse(rawData) : defaultData;
-}
-
-function saveAppData<T extends Item>(
-    appId: string,
+function buildAppData<T extends Item>(
     itemManager: ItemManager<T>,
     hierarchyManager: HierarchyManager,
     stateManager: EntityStateManager,
@@ -287,7 +273,7 @@ function saveAppData<T extends Item>(
         }, {}),
         counter: entityCounter
     };
-    sessionStorage.setItem(appId, JSON.stringify(data));
+    return data;
 }
 
 export function useBasicManagers<T extends Item>(
@@ -299,6 +285,8 @@ export function useBasicManagers<T extends Item>(
         addItem: (item: T, slot: HierarchySlot) => void,
         removeItem: (item: Pick<T, "id">) => void,
     ) => void,
+    loadAppData: () => AppData<T>,
+    saveAppData: (data: AppData<T>) => void,
 ): [
     DragManager,
     ActionManager,
@@ -307,9 +295,8 @@ export function useBasicManagers<T extends Item>(
     EntityStateManager,
     T[]
 ] {
-    const appId = "app-data";
     const [multiSelect, setMultiSelect] = React.useState(false);
-    const appData = React.useMemo(() => loadAppData<T>(appId), []);
+    const appData = React.useMemo(() => loadAppData(), []);
     const entityManager = useBasicEntityManager(appData.counter);
     const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
     const itemManager = useBasicItemManager<T>(
@@ -359,13 +346,12 @@ export function useBasicManagers<T extends Item>(
         };
     }, [setMultiSelect, multiSelect]);
     React.useEffect(() => {
-        saveAppData(
-            appId,
+        saveAppData(buildAppData(
             itemManager,
             hierarchyManager,
             stateManager,
             entityManager.counter
-        );
+        ));
     }, [itemManager, hierarchyManager, stateManager, entityManager.counter]);
     const selection = (
         hierarchyManager.entityList

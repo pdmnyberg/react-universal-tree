@@ -5,6 +5,7 @@ import {
     EntityStateContext,
     ItemContext,
     ActionContext,
+    AppData,
     useBasicManagers
 } from './contexts';
 import { Entity, HierarchySlot, Item } from './types';
@@ -137,6 +138,20 @@ function handleAction(
 }
 
 function App() {
+    const appId = "app-data";
+    function loadAppData() {
+        const defaultData: AppData<ItemWithContent> = {
+            items: [],
+            hierarchy: [],
+            state: {},
+            counter: 0,
+        };
+        const rawData = sessionStorage.getItem(appId);
+        return rawData ? JSON.parse(rawData) : defaultData;
+    }
+    function saveAppData(data: AppData<ItemWithContent>) {
+        sessionStorage.setItem(appId, JSON.stringify(data));
+    }
     const [
         dragManager,
         actionManager,
@@ -148,6 +163,8 @@ function App() {
         itemHasSlots,
         getItemActions,
         handleAction,
+        loadAppData,
+        saveAppData,
     );
     return (
         <div className="app">
