@@ -171,7 +171,7 @@ export function TreeNode(
                     onClick={(event) => {
                         event.stopPropagation();
                         event.preventDefault();
-                        onOpen(!isOpen)
+                        onOpen(!isOpen);
                     }}
                 />
                 {item.icon ? <span className="icon" data-icon={item.icon}></span> : <></>}

@@ -96,7 +96,19 @@
     position: relative;
 }
 
-.universal-tree .tree-node > .node-view > .tree-slot::after  {
+.universal-tree .tree-slot::after,
+.universal-tree .tree-slot::before {
+    display: block;
+    content: "";
+    border: solid 1px;
+    border-color: var(--slot-accent-color);
+    background-color: var(--slot-background-color);
+    z-index: 10000;
+    transition: background-color 0.1s, width 0.1s, height 0.1s;
+}
+
+.universal-tree .tree-node > .node-view > .tree-slot::after,
+.universal-tree .tree-node > .node-view > .tree-slot::before  {
     position: absolute;
     top: 0;
     left: 0;
@@ -104,17 +116,11 @@
     width: var(--slot-size);
 }
 
-.universal-tree .tree-slot::after {
-    display: block;
-    content: "";
-    border: solid 1px;
-    border-color: var(--slot-accent-color);
-    background-color: var(--slot-background-color);
-    z-index: 10000;
-    transition: background-color 0.1s;
-}
-
-.universal-tree .tree-node > .sub-nodes > .tree-slot::after, .universal-tree > .tree-slot::after {
+.universal-tree .tree-node > .sub-nodes > .tree-slot::after,
+.universal-tree > .tree-slot::after,
+.universal-tree .tree-node > .sub-nodes > .tree-slot::before,
+.universal-tree > .tree-slot::before
+ {
     position: absolute;
     top: 0;
     left: var(--slot-size);
@@ -124,7 +130,14 @@
     transform: translateY(-50%);
 }
 
-.universal-tree .tree-slot[data-is-active="true"]::after {
+.universal-tree .tree-slot::before {
+    --slot-size: 3px;
     --slot-accent-color: rgba(0, 0, 0, 0.1);
     --slot-background-color: rgba(0, 0, 0, 0.2);
+}
+
+.universal-tree .tree-slot[data-is-active="true"]::before {
+    --slot-accent-color: rgba(0, 0, 0, 0.1);
+    --slot-background-color: rgba(0, 0, 0, 0.2);
+    --slot-size: 20px;
 }
