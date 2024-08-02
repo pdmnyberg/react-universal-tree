@@ -1,22 +1,13 @@
-import React from 'react'
 import { UniversalTree } from './components/UniversalTree'
 import {
   HierarchyContext,
   DragContext,
   EntityStateContext,
   ItemContext,
-  useDragManager,
-  useBasicHierarchyManager,
-  useEntityStateManager,
-  useBasicItemManager,
-  useBasicEntityManager,
-  ActionManager,
   ActionContext,
-  ItemManager,
-  HierarchyManager,
-  EntityStateManager
+  useBasicManagers
 } from './contexts';
-import { Entity, EntityState, HierarchyEntity, Item } from './types';
+import { Entity, HierarchySlot, Item } from './types';
 import "./App.css";
 
 type ItemWithContent = Item & {
@@ -35,50 +26,15 @@ type ItemWithContent = Item & {
   )
 }
 
-type AppData<T extends Item> = {
-  items: T[];
-  hierarchy: HierarchyEntity[];
-  state: {
-    [x: string]: EntityState;
-  },
-  counter: number,
-}
-
 function createItem(entity: Entity, item: Partial<ItemWithContent> = {}): ItemWithContent {
   return {
-    label: `<New Entity: ${entity.id}>`,
+    label: `<Node>`,
     content: {
       type: "node",
     },
     ...entity,
     ...item,
   }
-}
-
-function getItemActions(item: ItemWithContent) {
-  const removeNode = {
-    label: "Remove node",
-    actionId: "remove-node",
-    icon: "x",
-  };
-  if (["node", "layout-group"].includes(item.content.type)) {
-    return [
-      {
-        label: "Add node",
-        actionId: "add-node",
-        icon: "n",
-      },
-      {
-        label: "Add text",
-        actionId: "add-text",
-        icon: "t",
-      },
-      removeNode
-    ]
-  }
-  return [
-    removeNode
-  ]
 }
 
 function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity & Partial<ItemWithContent>) => void}) {
@@ -116,128 +72,83 @@ function SelectionItem(props: {item: ItemWithContent, updateItem: (item: Entity 
   )
 }
 
-function loadAppData<T extends Item>(appId: string): AppData<T> {
-  const rawData = sessionStorage.getItem(appId);
-  return rawData ? JSON.parse(rawData) : {
-    items: [
-      createItem(
-        {id: "root"},
-        {
-          label: "Root",
-          content: {type: "node"}
-        }
-      )
-    ],
-    hierarchy: [{id: "root", parentId: null}],
-    state: {},
-    counter: 0,
+function getItemActions(item: ItemWithContent) {
+  const removeNode = {
+    label: "Remove node",
+    actionId: "remove-node",
+    icon: "x",
   };
+  if (["node", "layout-group"].includes(item.content.type)) {
+    return [
+      {
+        label: "Add node",
+        actionId: "add-node",
+        icon: "n",
+      },
+      {
+        label: "Add text",
+        actionId: "add-text",
+        icon: "t",
+      },
+      removeNode
+    ]
+  }
+  return [
+    removeNode
+  ]
 }
 
-function saveAppData<T extends Item>(
-  appId: string,
-  itemManager: ItemManager<T>,
-  hierarchyManager: HierarchyManager,
-  stateManager: EntityStateManager,
-  entityCounter: number
-) {
-  const data: AppData<T> = {
-    items: hierarchyManager.entityList.map(e => itemManager.getItem(e)),
-    hierarchy: hierarchyManager.entityList,
-    state: hierarchyManager.entityList.reduce<AppData<T>["state"]>((acc, e) => {
-      acc[e.id] = stateManager.getState(e);
-      return acc;
-    }, {}),
-    counter: entityCounter
-  };
-  sessionStorage.setItem(appId, JSON.stringify(data));
-}
-
-function App() {
-  const appId = "app-data";
-  const [multiSelect, setMultiSelect] = React.useState(false);
-  const appData = React.useMemo(() => loadAppData<ItemWithContent>(appId), []);
-  const entityManager = useBasicEntityManager(appData.counter);
-  const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
-  const itemManager = useBasicItemManager<ItemWithContent>(
-    appData.items,
-    getItemActions
-  );
-  function hasMatchingSlot(_: Entity, target: Entity) {
-    const targetItem = itemManager.getItem(target);
-    if (["text"].includes(targetItem.content.type)) {
+function itemHasSlots(_: ItemWithContent, target: ItemWithContent) {
+    if (["text"].includes(target.content.type)) {
       return false;
     }
     return true;
-  }
-  const dragManager = useDragManager(hierarchyManager, hasMatchingSlot);
-  const stateManager = useEntityStateManager(appData.state, multiSelect);
-  const actionManager: ActionManager = {
-    triggerAction(entity, actionId) {
-      const slot = {parentId: entity ? entity.id : null, position: 0};
-      switch (actionId) {
-        case "add-node": {
-          const newEntity = entityManager.createEntity();
-          const item = createItem(newEntity);
-          itemManager.addItem(item);
-          if (entity) {
-            stateManager.updateState(entity, {isOpen: true});
-          }
-          hierarchyManager.addEntity(item, slot);
-          break;
+}
+
+function handleAction(
+  item: ItemWithContent | null, actionId: string,
+  addItem: (item: ItemWithContent, slot: HierarchySlot) => void,
+  removeItem: (item: Pick<ItemWithContent, "id">) => void
+) {
+  const slot = {parentId: item ? item.id : null, position: 0};
+  switch (actionId) {
+    case "add-node": {
+      const item = createItem({id: ""});
+      addItem(item, slot);
+      break;
+    }
+    case "add-text": {
+      const item = createItem(
+        {id: ""},
+        {
+          label: `<Text>`,
+          content: {type: "text", value: ""},
         }
-        case "add-text": {
-          const newEntity = entityManager.createEntity();
-          const item = createItem(
-            newEntity,
-            {
-              label: `<Text-${newEntity.id}>`,
-              content: {type: "text", value: ""},
-            }
-          );
-          itemManager.addItem(item);
-          if (entity) {
-            stateManager.updateState(entity, {isOpen: true});
-          }
-          hierarchyManager.addEntity(item, slot);
-          break;
-        }
-        case "remove-node": {
-          if (entity) {
-            hierarchyManager.removeEntity(entity);
-            itemManager.removeItem(entity);
-          }
-          break;
-        }
+      );
+      addItem(item, slot);
+      break;
+    }
+    case "remove-node": {
+      if (item) {
+        removeItem(item);
       }
+      break;
     }
   }
-  React.useEffect(() => {
-    function shiftListener(event: KeyboardEvent) {
-      if (event.key === "Shift") {
-        setMultiSelect(event.type === "keydown");
-      }
-    }
-    addEventListener("keydown", shiftListener);
-    addEventListener("keyup", shiftListener);
-    return () => {
-      removeEventListener("keydown", shiftListener);
-      removeEventListener("keyup", shiftListener);
-    };
-  }, [setMultiSelect, multiSelect]);
-  React.useEffect(() => {
-    saveAppData(
-      appId,
-      itemManager,
-      hierarchyManager,
-      stateManager,
-      entityManager.counter
-    );
-  }, [itemManager, hierarchyManager, stateManager, entityManager.counter]);
-  const selection = (
-    hierarchyManager.entityList
-      .filter(e => stateManager.getState(e).isSelected)
-      .map(e => itemManager.getItem(e))
+}
+
+function App() {
+  const [
+    dragManager,
+    actionManager,
+    itemManager,
+    hierarchyManager,
+    stateManager,
+    selection
+  ] = useBasicManagers<ItemWithContent>(
+    itemHasSlots,
+    getItemActions,
+    handleAction,
   );
   return (
     <div className="app">

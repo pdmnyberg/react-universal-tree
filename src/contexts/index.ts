@@ -42,29 +42,29 @@ type DragManager = {
 }
 
 export const ActionContext = React.createContext<ActionManager>({
-    triggerAction(entity, actionId) {console.log(entity, actionId)},
+    triggerAction(entity, actionId) { console.log(entity, actionId) },
 })
 
 export const HierarchyContext = React.createContext<HierarchyManager>({
     entityList: [],
-    getChildren() {return []},
-    moveEntity() {},
+    getChildren() { return [] },
+    moveEntity() { },
 })
 
 export const ItemContext = React.createContext<ItemManager<Item>>({
-    getItem() {return {id: "", label: ""}},
-    getActions() {return undefined},
-    updateItem() {},
+    getItem() { return { id: "", label: "" } },
+    getActions() { return undefined },
+    updateItem() { },
 })
 
 export const EntityStateContext = React.createContext<EntityStateManager>({
-    getState() {return {isOpen: true, isSelected: false}},
-    updateState() {}
+    getState() { return { isOpen: true, isSelected: false } },
+    updateState() { }
 })
 
 export const DragContext = React.createContext<DragManager>({
     drag(n) {
-       console.log(n);
+        console.log(n);
     },
     drop(s) {
         console.log(s);
@@ -75,7 +75,7 @@ export const DragContext = React.createContext<DragManager>({
     currentEntity: null,
 })
 
-export function useBasicEntityManager(initialCounter: number): EntityManager & {counter: number} {
+export function useBasicEntityManager(initialCounter: number): EntityManager & { counter: number } {
     const [counter, setCounter] = React.useState(initialCounter);
     return {
         createEntity() {
@@ -105,9 +105,9 @@ function _moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: Hierar
     updatedEntityList.splice(
         insertIndex,
         0,
-        {id: entity.id, parentId: slot.parentId, position: slot.position}
+        { id: entity.id, parentId: slot.parentId, position: slot.position }
     );
-    const positionAcc: {[x: EntityId]: number} = {};
+    const positionAcc: { [x: EntityId]: number } = {};
     return updatedEntityList.map(e => {
         const currentPosition = positionAcc[e.id] || 0
         positionAcc[e.id] = currentPosition + 1;
@@ -127,7 +127,7 @@ export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): 
     const [entityList, setEntityList] = React.useState(initialEntityList);
     return {
         entityList,
-        getChildren(entity: Entity) {return entityList.filter(n => n.parentId === entity.id)},
+        getChildren(entity: Entity) { return entityList.filter(n => n.parentId === entity.id) },
         moveEntity(entity: Entity, slot: HierarchySlot) {
             setEntityList(_moveEntity(entityList, entity, slot));
         },
@@ -160,21 +160,21 @@ export function useDragManager(
     }
 }
 
-function _getState(states: {[x: EntityId]: EntityState}, entity: Entity) {
+function _getState(states: { [x: EntityId]: EntityState }, entity: Entity) {
     return states[entity.id] || {
         isSelected: false,
         isOpen: false,
     };
 };
-function _clearSelection(states: {[x: EntityId]: EntityState}) {
-    return Object.keys(states).reduce<{[x: EntityId]: EntityState}>((acc, key) => {
-        acc[key] = {..._getState(states, {id: key}), isSelected: false}
+function _clearSelection(states: { [x: EntityId]: EntityState }) {
+    return Object.keys(states).reduce<{ [x: EntityId]: EntityState }>((acc, key) => {
+        acc[key] = { ..._getState(states, { id: key }), isSelected: false }
         return acc;
     }, {});
 }
 
 export function useEntityStateManager(
-    initialStates: {[x: EntityId]: EntityState},
+    initialStates: { [x: EntityId]: EntityState },
     multiSelect: boolean = false
 ): EntityStateManager {
     const [states, setStates] = React.useState(initialStates);
@@ -206,13 +206,13 @@ export function useBasicItemManager<T extends Item>(
     initialItemList: T[],
     getActions: (item: T) => ItemAction[] | undefined = () => undefined
 ): (
-    ItemManager<T> & {
-        addItem(item: T): void;
-        removeItem(entity: Entity): void;
-    }
-) {
+        ItemManager<T> & {
+            addItem(item: T): void;
+            removeItem(entity: Entity): void;
+        }
+    ) {
     const [items, setItems] = React.useState(() => {
-        return initialItemList.reduce<{[x: EntityId]: T}>((acc, item) => {
+        return initialItemList.reduce<{ [x: EntityId]: T }>((acc, item) => {
             acc[item.id] = item;
             return acc;
         }, {})
@@ -223,10 +223,10 @@ export function useBasicItemManager<T extends Item>(
 
     return {
         addItem(item: T) {
-            setItems({...items, [item.id]: item});
+            setItems({ ...items, [item.id]: item });
         },
         removeItem(entity: Entity) {
-            setItems(Object.values(items).reduce<{[x: EntityId]: T}>((acc, i) => {
+            setItems(Object.values(items).reduce<{ [x: EntityId]: T }>((acc, i) => {
                 if (i.id !== entity.id) {
                     acc[i.id] = i;
                 }
@@ -247,4 +247,137 @@ export function useBasicItemManager<T extends Item>(
             });
         }
     }
+}
+
+type AppData<T extends Item> = {
+    items: T[];
+    hierarchy: HierarchyEntity[];
+    state: {
+        [x: string]: EntityState;
+    },
+    counter: number,
+}
+
+function loadAppData<T extends Item>(
+    appId: string,
+    defaultData: AppData<T> = {
+        items: [],
+        hierarchy: [],
+        state: {},
+        counter: 0,
+    }
+): AppData<T> {
+    const rawData = sessionStorage.getItem(appId);
+    return rawData ? JSON.parse(rawData) : defaultData;
+}
+
+function saveAppData<T extends Item>(
+    appId: string,
+    itemManager: ItemManager<T>,
+    hierarchyManager: HierarchyManager,
+    stateManager: EntityStateManager,
+    entityCounter: number
+) {
+    const data: AppData<T> = {
+        items: hierarchyManager.entityList.map(e => itemManager.getItem(e)),
+        hierarchy: hierarchyManager.entityList,
+        state: hierarchyManager.entityList.reduce<AppData<T>["state"]>((acc, e) => {
+            acc[e.id] = stateManager.getState(e);
+            return acc;
+        }, {}),
+        counter: entityCounter
+    };
+    sessionStorage.setItem(appId, JSON.stringify(data));
+}
+
+export function useBasicManagers<T extends Item>(
+    itemHasSlots: (source: T, target: T) => boolean,
+    getItemActions: (item: T) => ItemAction[],
+    handleAction: (
+        item: T | null,
+        actionId: string,
+        addItem: (item: T, slot: HierarchySlot) => void,
+        removeItem: (item: Pick<T, "id">) => void,
+    ) => void,
+): [
+    DragManager,
+    ActionManager,
+    ItemManager<T>,
+    HierarchyManager,
+    EntityStateManager,
+    T[]
+] {
+    const appId = "app-data";
+    const [multiSelect, setMultiSelect] = React.useState(false);
+    const appData = React.useMemo(() => loadAppData<T>(appId), []);
+    const entityManager = useBasicEntityManager(appData.counter);
+    const hierarchyManager = useBasicHierarchyManager(appData.hierarchy);
+    const itemManager = useBasicItemManager<T>(
+        appData.items,
+        getItemActions
+    );
+    function hasMatchingSlot(source: Entity, target: Entity) {
+        const sourceItem = itemManager.getItem(source);
+        const targetItem = itemManager.getItem(target);
+        return itemHasSlots(sourceItem, targetItem);
+    }
+    const dragManager = useDragManager(hierarchyManager, hasMatchingSlot);
+    const stateManager = useEntityStateManager(appData.state, multiSelect);
+    const actionManager: ActionManager = {
+        triggerAction(entity, actionId) {
+            function addItem(item: T, slot: HierarchySlot) {
+                const newEntity = entityManager.createEntity();
+                const newItem: T = {
+                    ...item,
+                    ...newEntity,
+                }
+                itemManager.addItem(newItem);
+                if (entity) {
+                    stateManager.updateState(entity, { isOpen: true });
+                }
+                hierarchyManager.addEntity(newItem, slot);
+            }
+            function removeItem(item: Pick<T, "id">) {
+                hierarchyManager.removeEntity(item);
+                itemManager.removeItem(item);
+            }
+            const sourceItem = entity ? itemManager.getItem(entity) : null;
+            handleAction(sourceItem, actionId, addItem, removeItem);
+        }
+    }
+    React.useEffect(() => {
+        function shiftListener(event: KeyboardEvent) {
+            if (event.key === "Shift") {
+                setMultiSelect(event.type === "keydown");
+            }
+        }
+        addEventListener("keydown", shiftListener);
+        addEventListener("keyup", shiftListener);
+        return () => {
+            removeEventListener("keydown", shiftListener);
+            removeEventListener("keyup", shiftListener);
+        };
+    }, [setMultiSelect, multiSelect]);
+    React.useEffect(() => {
+        saveAppData(
+            appId,
+            itemManager,
+            hierarchyManager,
+            stateManager,
+            entityManager.counter
+        );
+    }, [itemManager, hierarchyManager, stateManager, entityManager.counter]);
+    const selection = (
+        hierarchyManager.entityList
+            .filter(e => stateManager.getState(e).isSelected)
+            .map(e => itemManager.getItem(e))
+    );
+    return [
+        dragManager,
+        actionManager,
+        itemManager,
+        hierarchyManager,
+        stateManager,
+        selection
+    ]
 }
