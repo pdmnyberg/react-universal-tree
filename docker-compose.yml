@@ -5,6 +5,7 @@ services:
     volumes:
       - ./:/opt/output
     working_dir: /opt/output
+    entrypoint: "npm run dev"
     ports:
-      - "127.0.0.1:5173:5173"
+      - "8080:8080"
 
