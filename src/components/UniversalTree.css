@@ -107,6 +107,18 @@
     transition: background-color 0.1s, width 0.1s, height 0.1s;
 }
 
+.universal-tree .node-view {
+    position: relative;
+}
+
+.universal-tree .node-view > .tree-slot{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
 .universal-tree .tree-node > .node-view > .tree-slot::after,
 .universal-tree .tree-node > .node-view > .tree-slot::before  {
     position: absolute;
