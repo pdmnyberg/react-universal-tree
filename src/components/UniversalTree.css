@@ -33,7 +33,7 @@
     --node-background-color: #eee;
 }
 
-.universal-tree .tree-node > .node-view > .open {
+.universal-tree .tree-node > .node-view > .parent {
     border-color: var(--node-accent-color);
     border-left: solid var(--node-indent);
     border-right: solid 1px;
@@ -66,7 +66,7 @@
     --node-background-color: #ccc;
 }
 
-.universal-tree .tree-node > .node-view > .open::after {
+.universal-tree .tree-node > .node-view > .parent::after {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -74,11 +74,11 @@
     content: "+";
 }
 
-.universal-tree .tree-node > .node-view > .open[data-has-children="false"]::after {
+.universal-tree .tree-node > .node-view > .parent[data-has-children="false"]::after {
     content: "";
 }
 
-.universal-tree .tree-node > .node-view > .open[data-has-children="true"][data-is-open="true"]::after {
+.universal-tree .tree-node > .node-view > .parent[data-has-children="true"][data-is-open="true"]::after {
     content: "-";
 }
 

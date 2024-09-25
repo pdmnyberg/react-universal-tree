@@ -165,7 +165,7 @@ export function TreeNode(
             >
                 {insertSlot ? insertSlot : <></>}
                 <span
-                    className="open"
+                    className="parent"
                     data-has-children={hasChildren}
                     data-is-open={isOpen}
                     onClick={(event) => {
@@ -191,7 +191,7 @@ export function TreeNode(
             </div>
             {isOpen ? (
                 <div className="sub-nodes">
-                    {useChildren}
+                    {children}
                 </div>
             ) : <></>}
         </div>

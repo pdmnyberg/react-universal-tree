@@ -121,10 +121,17 @@ function _moveEntity(entityList: HierarchyEntity[], entity: Entity, slot: Hierar
 export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): (
     HierarchyManager & {
         addEntity(entity: Entity, slot: HierarchySlot): void;
-        removeEntity(entity: Entity): void;
+        removeEntity(entity: Entity): Entity[];
     }
 ) {
     const [entityList, setEntityList] = React.useState(initialEntityList);
+    const getAllChildren = (entity: Entity): HierarchyEntity[] => {
+        const children = entityList.filter(n => n.parentId === entity.id);
+        return [
+            ...children,
+            ...children.flatMap(c => getAllChildren(c))
+        ];
+    }
     return {
         entityList,
         getChildren(entity: Entity) { return entityList.filter(n => n.parentId === entity.id) },
@@ -135,7 +142,13 @@ export function useBasicHierarchyManager(initialEntityList: HierarchyEntity[]): 
             setEntityList(_moveEntity(entityList, entity, slot));
         },
         removeEntity(entity: Entity) {
-            setEntityList(entityList.filter(e => e.id !== entity.id));
+            const entities = [entity, ...getAllChildren(entity)];
+            for (const e of entities) {
+                const entityIndex = entityList.findIndex((v) => v.id === e.id);
+                entityList.splice(entityIndex, 1);
+            }
+            setEntityList([...entityList]);
+            return entities;
         }
     };
 }
@@ -226,12 +239,8 @@ export function useBasicItemManager<T extends Item>(
             setItems({ ...items, [item.id]: item });
         },
         removeItem(entity: Entity) {
-            setItems(Object.values(items).reduce<{ [x: EntityId]: T }>((acc, i) => {
-                if (i.id !== entity.id) {
-                    acc[i.id] = i;
-                }
-                return acc;
-            }, {}))
+            delete items[entity.id]; 
+            setItems({...items});
         },
         getItem,
         getActions(entity: Entity) {
@@ -325,8 +334,10 @@ export function useBasicManagers<T extends Item>(
                 hierarchyManager.addEntity(newItem, slot);
             }
             function removeItem(item: Pick<T, "id">) {
-                hierarchyManager.removeEntity(item);
-                itemManager.removeItem(item);
+                const allItems = hierarchyManager.removeEntity(item);
+                for (const i of allItems) {
+                    itemManager.removeItem(i);
+                }
             }
             const sourceItem = entity ? itemManager.getItem(entity) : null;
             handleAction(sourceItem, actionId, addItem, removeItem);
